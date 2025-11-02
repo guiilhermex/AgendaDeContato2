@@ -1,0 +1,54 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio
+.vs/
+
+# Rider / JetBrains
+.idea/
+
+# Logs
+*.log
+*.tlog
+
+# Compiled files
+*.dll
+*.exe
+*.pdb
+*.cache
+*.json.gz
+
+# Packages
+*.nupkg
+*.snupkg
+packages/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Publish output
+publish/
+out/
+
+# Configuration
+appsettings.Development.json
+
+# Backup files
+*.bak
+
+# OS files
+Thumbs.db
+ehthumbs.db
+.DS_Store
+
+# dotenv
+.env
