@@ -36,6 +36,9 @@ namespace AgendaContato.Data.Mappings
                 .IsRequired()
                 .HasColumnType("VARCHAR")
                 .HasMaxLength(255);
+            builder.Property(x => x.Perfil)
+                    .IsRequired()                
+                    .HasConversion<int>();
 
             builder.Property(x => x.CriadoEm)
                 .HasColumnType("DATETIME")

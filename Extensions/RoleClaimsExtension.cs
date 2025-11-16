@@ -9,10 +9,10 @@ namespace AgendaContato.Extensions
         {
             var claims = new List<Claim>
             {
-                new(ClaimTypes.NameIdentifier, usuario.IdUsuario.ToString()),
-                new(ClaimTypes.Name, usuario.Nome),
-                new(ClaimTypes.Email, usuario.Email),
-                new(ClaimTypes.Role, usuario.Perfil.ToString()),
+                new Claim("IdUsuario", usuario.IdUsuario.ToString()),
+                new Claim("Email", usuario.Email),
+                new Claim("Role", usuario.Perfil.ToString())
+
             };
 
             if (usuario.Roles != null && usuario.Roles.Any())

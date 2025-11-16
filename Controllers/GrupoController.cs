@@ -1,5 +1,4 @@
 ﻿using AgendaContato.Domain.Models;
-using AgendaContato.Services;
 using AgendaContato.ViewModels.Grupo;
 using AgendaContatos.Data;
 using Blog.Extensions;
@@ -16,6 +15,18 @@ namespace AgendaContato.Controllers
     [Route("v1/[Controller]")]
     public class GrupoController : ControllerBase
     {
+        private int? ObterUsuarioLogadoId()
+        {
+            var idClaim = User.FindFirst("IdUsuario")?.Value;
+            if (string.IsNullOrEmpty(idClaim))
+                return null;
+
+            if (int.TryParse(idClaim, out var idUsuario))
+                return idUsuario;
+
+            return null;
+        }
+
         [HttpGet]
         public async Task<IActionResult> ListarGrupos(
             [FromServices] AppDbContext context,
@@ -24,14 +35,21 @@ namespace AgendaContato.Controllers
         {
             try
             {
-                var total = await context.Grupos.CountAsync();
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
+                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+
+                var total = await context.Grupos
+                    .Where(x => x.UsuarioId == userId)
+                    .CountAsync();
 
                 var grupos = await context.Grupos
-                                          .AsNoTracking()
-                                          .OrderBy(x => x.NomeGrupo)
-                                          .Skip((pageNumber - 1) * pageSize)
-                                          .Take(pageSize)
-                                          .ToListAsync();
+                    .AsNoTracking()
+                    .Where(x => x.UsuarioId == userId)
+                    .OrderBy(x => x.NomeGrupo)
+                    .Skip((pageNumber - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
 
                 var result = new
                 {
@@ -49,16 +67,23 @@ namespace AgendaContato.Controllers
             }
         }
 
-        [HttpGet(template: "Listar/{id:int}")]
+        [HttpGet("Listar/{id:int}")]
         public async Task<IActionResult> ListarGrupoId(
             [FromRoute] int id,
             [FromServices] AppDbContext context)
         {
             try
             {
-                var grupo = await context.Grupos.AsNoTracking().FirstOrDefaultAsync(x => x.IdGrupo == id);
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
+                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+
+                var grupo = await context.Grupos
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.IdGrupo == id && x.UsuarioId == userId);
+
                 if (grupo == null)
-                    return NotFound(new ResultViewModel<Grupo>("conteúdo não encontrado"));
+                    return NotFound(new ResultViewModel<Grupo>("Conteúdo não encontrado"));
 
                 return Ok(new ResultViewModel<Grupo>(grupo));
             }
@@ -68,27 +93,34 @@ namespace AgendaContato.Controllers
             }
         }
 
-        [HttpPost(template: "Criar")]
+        [HttpPost("Criar")]
         public async Task<IActionResult> CriarGrupos(
             [FromBody] EditorGrupoViewModel model,
             [FromServices] AppDbContext context)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new ResultViewModel<Grupo>(ModelState.GetErrors()));
+
             try
             {
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
+                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+
                 var grupo = new Grupo
                 {
-                    NomeGrupo = model.NomeGrupo
+                    NomeGrupo = model.NomeGrupo,
+                    UsuarioId = userId.Value
                 };
+
                 await context.Grupos.AddAsync(grupo);
                 await context.SaveChangesAsync();
 
-                return Created($"/v1/grupos/{grupo.IdGrupo}", new ResultViewModel<Grupo>(grupo));
+                return Created($"/v1/Grupo/{grupo.IdGrupo}", new ResultViewModel<Grupo>(grupo));
             }
             catch (DbUpdateException)
             {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X03 - não foi possivel criar o grupo"));
+                return StatusCode(500, new ResultViewModel<Grupo>("05X03 - não foi possível criar o grupo"));
             }
             catch
             {
@@ -96,15 +128,21 @@ namespace AgendaContato.Controllers
             }
         }
 
-        [HttpPut(template: "Editar/{id:int}")]
-        public async Task<IActionResult> EditatGrupos(
+        [HttpPut("Editar/{id:int}")]
+        public async Task<IActionResult> EditarGrupos(
             [FromRoute] int id,
             [FromBody] EditorGrupoViewModel model,
             [FromServices] AppDbContext context)
         {
             try
             {
-                var grupo = await context.Grupos.FindAsync(id);
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
+                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+
+                var grupo = await context.Grupos
+                    .FirstOrDefaultAsync(x => x.IdGrupo == id && x.UsuarioId == userId);
+
                 if (grupo == null)
                     return NotFound(new ResultViewModel<Grupo>("Conteúdo não encontrado"));
 
@@ -112,11 +150,12 @@ namespace AgendaContato.Controllers
 
                 context.Grupos.Update(grupo);
                 await context.SaveChangesAsync();
+
                 return Ok(new ResultViewModel<Grupo>(grupo));
             }
             catch (DbUpdateException)
             {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X05 - não foi possivel alterar o grupo"));
+                return StatusCode(500, new ResultViewModel<Grupo>("05X05 - não foi possível alterar o grupo"));
             }
             catch
             {
@@ -124,14 +163,20 @@ namespace AgendaContato.Controllers
             }
         }
 
-        [HttpDelete(template: "Deletar/{id:int}")]
+        [HttpDelete("Deletar/{id:int}")]
         public async Task<IActionResult> ExcluirGrupos(
             [FromRoute] int id,
             [FromServices] AppDbContext context)
         {
             try
             {
-                var grupo = await context.Grupos.FirstOrDefaultAsync(x => x.IdGrupo == id);
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
+                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+
+                var grupo = await context.Grupos
+                    .FirstOrDefaultAsync(x => x.IdGrupo == id && x.UsuarioId == userId);
+
                 if (grupo == null)
                     return NotFound(new ResultViewModel<Grupo>("Conteúdo não encontrado"));
 
@@ -142,7 +187,7 @@ namespace AgendaContato.Controllers
             }
             catch (DbUpdateException)
             {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X07 - não foi possivel excluir grupo"));
+                return StatusCode(500, new ResultViewModel<Grupo>("05X07 - não foi possível excluir grupo"));
             }
             catch
             {

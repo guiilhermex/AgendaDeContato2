@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Data.Common;
+using System.Security.Claims;
 
 namespace AgendaContato.Controllers
 {
@@ -15,6 +16,18 @@ namespace AgendaContato.Controllers
     [Route("v1/[controller]")]
     public class ContatoController : ControllerBase
     {
+        private int? ObterUsuarioLogadoId()
+        {
+            var idClaim = User.FindFirst("IdUsuario")?.Value;
+            if (string.IsNullOrEmpty(idClaim))
+                return null;
+
+            if (int.TryParse(idClaim, out var idUsuario))
+                return idUsuario;
+
+            return null;
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetContatos(
             [FromServices] AppDbContext context,
@@ -23,12 +36,9 @@ namespace AgendaContato.Controllers
         {
             try
             {
-                // Pega o Id do usuário autenticado a partir do token JWT
-                var userIdClaim = User.FindFirst("IdUsuario")?.Value;
-                if (string.IsNullOrEmpty(userIdClaim))
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
                     return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
-
-                var userId = int.Parse(userIdClaim);
 
                 var total = await context.Contatos
                     .Where(x => x.IdUsuario == userId)
@@ -65,11 +75,9 @@ namespace AgendaContato.Controllers
         {
             try
             {
-                var userIdClaim = User.FindFirst("IdUsuario")?.Value;
-                if (string.IsNullOrEmpty(userIdClaim))
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
                     return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
-
-                var userId = int.Parse(userIdClaim);
 
                 var contato = await context.Contatos
                     .AsNoTracking()
@@ -96,18 +104,16 @@ namespace AgendaContato.Controllers
 
             try
             {
-                var userIdClaim = User.FindFirst("IdUsuario")?.Value;
-                if (string.IsNullOrEmpty(userIdClaim))
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
                     return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
-
-                var userId = int.Parse(userIdClaim);
 
                 var contato = new Contato
                 {
                     NomeContato = model.NomeContato,
                     Telefone = model.Telefone,
                     Email = model.Email,
-                    IdUsuario = userId 
+                    IdUsuario = userId.Value
                 };
 
                 await context.Contatos.AddAsync(contato);
@@ -133,11 +139,9 @@ namespace AgendaContato.Controllers
         {
             try
             {
-                var userIdClaim = User.FindFirst("IdUsuario")?.Value;
-                if (string.IsNullOrEmpty(userIdClaim))
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
                     return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
-
-                var userId = int.Parse(userIdClaim);
 
                 var contato = await context.Contatos
                     .FirstOrDefaultAsync(x => x.IdContato == id && x.IdUsuario == userId);
@@ -171,11 +175,9 @@ namespace AgendaContato.Controllers
         {
             try
             {
-                var userIdClaim = User.FindFirst("IdUsuario")?.Value;
-                if (string.IsNullOrEmpty(userIdClaim))
+                var userId = ObterUsuarioLogadoId();
+                if (userId is null)
                     return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
-
-                var userId = int.Parse(userIdClaim);
 
                 var contato = await context.Contatos
                     .FirstOrDefaultAsync(x => x.IdContato == id && x.IdUsuario == userId);

@@ -7,13 +7,15 @@ using Blog.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using AgendaContato.ViewModels;
 
 namespace AgendaContato.Controllers
 {
     [ApiController]
     [Route("v1/[controller]")]
-    public class UsuarioController : ControllerBase
+    public class UsuarioController : Controller
     {
+        
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> ListarUsuarios([FromServices] AppDbContext context)
@@ -95,6 +97,10 @@ namespace AgendaContato.Controllers
             {
                 return StatusCode(500, new ResultViewModel<string>($"Erro interno: {ex.GetType().Name} - {ex.Message}"));
             }
+        }
+        public IActionResult Index()
+        {
+            return View();
         }
 
     }
