@@ -1,8 +1,26 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Bem-vindo - Agenda de Contatos";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2 text-center">
+            <h1 class="display-5">Agenda de Contatos</h1>
+            <p class="lead">Um sistema simples para gerenciar contatos e grupos — rápido e prático.</p>
+
+            <p>
+                <a class="btn btn-primary btn-lg" href="@Url.Action("LoginView", "Usuario")">Entrar</a>
+                <a class="btn btn-outline-secondary btn-lg" href="@Url.Action("CadastroView", "Usuario")">Cadastrar</a>
+            </p>
+
+            <hr />
+
+            <h4>Recursos</h4>
+            <ul class="text-start">
+                <li>Crie e edite contatos</li>
+                <li>Organize por grupos</li>
+                <li>Autenticação via JWT (API)</li>
+            </ul>
+        </div>
+    </div>
 </div>

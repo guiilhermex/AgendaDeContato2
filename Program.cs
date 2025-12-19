@@ -33,12 +33,9 @@ builder.Services.AddAuthorization();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Habilitar MVC (Views) + Controllers API
-
 // AGORA seu projeto aceita Views (.cshtml)
 builder.Services.AddControllersWithViews();
 
-//  Mantém o comportamento atual da API
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
     {
@@ -82,7 +79,6 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-//Configuração do pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -92,7 +88,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Agenda de Contatos API v1");
-        c.RoutePrefix = "swagger"; // <--- CORRETO
+        c.RoutePrefix = "swagger";
     });
 }
 else
@@ -111,10 +107,8 @@ app.UseAuthorization();
 //ROTA PADRÃO (MVC HOME/INDEX)
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}"
-);
+  pattern: "{controller=Home}/{action=Index}");
 
-// Mantém a API funcionando normalmente
 app.MapControllers();
 
 app.Run();

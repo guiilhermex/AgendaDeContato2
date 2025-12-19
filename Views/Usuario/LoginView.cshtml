@@ -1,0 +1,35 @@
+﻿@{
+    ViewData["Title"] = "Login";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h2>Login</h2>
+    <form id="loginForm">
+        <div class="mb-3">
+            <label>Email</label>
+            <input type="email" name="Email" class="form-control" placeholder="Email" required />
+        </div>
+        <div class="mb-3">
+            <label>Senha</label>
+            <input type="password" name="Senha" class="form-control" placeholder="Senha" required />
+        </div>
+        <div>
+            <a href="/Usuario/ResetarSenha">Esqueceu sua senha?</a>
+        </div>
+        <button class="btn btn-primary" type="submit">Entrar</button>
+    </form>
+
+</body>
+</html>
+
+
+@section Scripts {
+    <script src="~/js/UsuarioLogin.js" asp-append-version="true"></script>
+}

@@ -15,11 +15,13 @@ namespace AgendaContato.Domain.Models
         public ICollection<Contato> Contatos { get; set; } = new List<Contato>();
         public ICollection<Grupo> Grupos { get; set; } = new List<Grupo>();
         public List<UsuarioRole> Roles { get; set; } = new();
+        public string? ResetPasswordToken { get; set; }
+        public DateTime? ResetPasswordTokenExpiration { get; set; }
 
         public class UsuarioRole
         {
             public int Id { get; set; }
-            public string Slug { get; set; } = string.Empty; // Ex: "Admin", "User"
+            public string Slug { get; set; } = string.Empty;
         }
     }
 }

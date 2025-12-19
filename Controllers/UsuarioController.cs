@@ -11,11 +11,22 @@ using AgendaContato.ViewModels;
 
 namespace AgendaContato.Controllers
 {
-    [ApiController]
-    [Route("v1/[controller]")]
+    [Route("Usuario")]
     public class UsuarioController : Controller
     {
-        
+
+        [AllowAnonymous]
+        [HttpGet("Login")]
+        public IActionResult LoginView()
+        {
+            return View();
+        }
+        [AllowAnonymous]
+        [HttpGet("Cadastro")]
+        public IActionResult CadastroView()
+        {
+            return View();
+        }
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> ListarUsuarios([FromServices] AppDbContext context)
@@ -33,8 +44,8 @@ namespace AgendaContato.Controllers
         [AllowAnonymous]
         [HttpPost("Cadastro")]
         public async Task<IActionResult> CriarUsuario(
-    [FromBody] UsuarioCreateViewModel model,
-    [FromServices] AppDbContext context)
+        [FromBody] UsuarioCreateViewModel model,
+        [FromServices] AppDbContext context)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new ResultViewModel<Usuario>(ModelState.GetErrors()));
@@ -91,16 +102,70 @@ namespace AgendaContato.Controllers
                     return Unauthorized(new ResultViewModel<string>("usuário ou senha inválidos"));
 
                 var token = tokenService.GenerateToken(usuario);
-                return Ok(new { token });
+                return Ok(new { token, nome = usuario.Nome });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new ResultViewModel<string>($"Erro interno: {ex.GetType().Name} - {ex.Message}"));
             }
         }
-        public IActionResult Index()
+
+        [AllowAnonymous]
+        [HttpPost("EsqueciSenha")]
+        public async Task<IActionResult> EsqueciSenha(
+            [FromBody] UsuarioEsqueciSenhaViewModel model,
+            [FromServices] AppDbContext context)
         {
-            return View();
+            if (string.IsNullOrWhiteSpace(model.Email))
+                return BadRequest(new ResultViewModel<string>("E-mail inválido"));
+
+            var usuario = await context.Usuarios.FirstOrDefaultAsync(x => x.Email == model.Email);
+
+            if (usuario == null)
+                return Ok(new ResultViewModel<string>("Se o e-mail existir, enviaremos instruções"));
+
+            usuario.ResetPasswordToken = Guid.NewGuid().ToString("N");
+            usuario.ResetPasswordTokenExpiration = DateTime.UtcNow.AddMinutes(30);
+
+            context.Usuarios.Update(usuario);
+            await context.SaveChangesAsync();
+
+            //troca isso por envio de e-mail
+            return Ok(new
+            {
+                message = "Token gerado com sucesso",
+                token = usuario.ResetPasswordToken
+            });
+        }
+        [AllowAnonymous]
+        [HttpPost("ResetarSenha")]
+        public async Task<IActionResult> ResetarSenha(
+            [FromBody] UsuarioResetSenhaViewModel model,
+            [FromServices] AppDbContext context)
+        {
+            if (string.IsNullOrWhiteSpace(model.Email) ||
+                string.IsNullOrWhiteSpace(model.Token) ||
+                string.IsNullOrWhiteSpace(model.NovaSenha))
+            {
+                return BadRequest(new ResultViewModel<string>("Dados inválidos"));
+            }
+
+            var usuario = await context.Usuarios.FirstOrDefaultAsync(x =>
+                x.Email == model.Email &&
+                x.ResetPasswordToken == model.Token &&
+                x.ResetPasswordTokenExpiration > DateTime.UtcNow);
+
+            if (usuario == null)
+                return BadRequest(new ResultViewModel<string>("Token inválido ou expirado"));
+
+            usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(model.NovaSenha);
+            usuario.ResetPasswordToken = null;
+            usuario.ResetPasswordTokenExpiration = null;
+
+            context.Usuarios.Update(usuario);
+            await context.SaveChangesAsync();
+
+            return Ok(new ResultViewModel<string>("Senha redefinida com sucesso"));
         }
 
     }
