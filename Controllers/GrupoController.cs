@@ -6,13 +6,11 @@ using Blog.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Data.Common;
 
 namespace AgendaContato.Controllers
 {
     [Authorize]
-    [ApiController]
-    [Route("v1/[Controller]")]
+    [Route("Grupo")]
     public class GrupoController : ControllerBase
     {
         private int? ObterUsuarioLogadoId()
@@ -31,7 +29,8 @@ namespace AgendaContato.Controllers
         public async Task<IActionResult> ListarGrupos(
             [FromServices] AppDbContext context,
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? nome = null)
         {
             try
             {
@@ -39,13 +38,18 @@ namespace AgendaContato.Controllers
                 if (userId is null)
                     return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
 
-                var total = await context.Grupos
-                    .Where(x => x.UsuarioId == userId)
-                    .CountAsync();
-
-                var grupos = await context.Grupos
+                var query = context.Grupos
                     .AsNoTracking()
-                    .Where(x => x.UsuarioId == userId)
+                    .Where(x => x.UsuarioId == userId);
+
+                if (!string.IsNullOrWhiteSpace(nome))
+                {
+                    query = query.Where(x => x.NomeGrupo.Contains(nome));
+                }
+
+                var total = await query.CountAsync();
+
+                var grupos = await query
                     .OrderBy(x => x.NomeGrupo)
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)
@@ -61,7 +65,7 @@ namespace AgendaContato.Controllers
 
                 return Ok(new ResultViewModel<object>(result));
             }
-            catch (Exception)
+            catch
             {
                 return StatusCode(500, new ResultViewModel<List<Grupo>>("05X01 - falha interna no servidor"));
             }
@@ -87,7 +91,7 @@ namespace AgendaContato.Controllers
 
                 return Ok(new ResultViewModel<Grupo>(grupo));
             }
-            catch (Exception)
+            catch
             {
                 return StatusCode(500, new ResultViewModel<Grupo>("05X02 - falha interna no servidor"));
             }
@@ -116,15 +120,11 @@ namespace AgendaContato.Controllers
                 await context.Grupos.AddAsync(grupo);
                 await context.SaveChangesAsync();
 
-                return Created($"/v1/Grupo/{grupo.IdGrupo}", new ResultViewModel<Grupo>(grupo));
-            }
-            catch (DbUpdateException)
-            {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X03 - não foi possível criar o grupo"));
+                return Created($"/Grupo/{grupo.IdGrupo}", new ResultViewModel<Grupo>(grupo));
             }
             catch
             {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X04 - falha interna no servidor"));
+                return StatusCode(500, new ResultViewModel<Grupo>("05X03 - não foi possível criar o grupo"));
             }
         }
 
@@ -153,13 +153,9 @@ namespace AgendaContato.Controllers
 
                 return Ok(new ResultViewModel<Grupo>(grupo));
             }
-            catch (DbUpdateException)
-            {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X05 - não foi possível alterar o grupo"));
-            }
             catch
             {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X06 - falha interna no servidor"));
+                return StatusCode(500, new ResultViewModel<Grupo>("05X05 - não foi possível alterar o grupo"));
             }
         }
 
@@ -184,10 +180,6 @@ namespace AgendaContato.Controllers
                 await context.SaveChangesAsync();
 
                 return Ok(new ResultViewModel<Grupo>(grupo));
-            }
-            catch (DbUpdateException)
-            {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X07 - não foi possível excluir grupo"));
             }
             catch
             {

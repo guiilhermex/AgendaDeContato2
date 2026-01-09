@@ -1,35 +1,35 @@
 ﻿@{
+    Layout = "_LayoutPublico";
     ViewData["Title"] = "Login";
 }
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <h2>Login</h2>
-    <form id="loginForm">
-        <div class="mb-3">
-            <label>Email</label>
-            <input type="email" name="Email" class="form-control" placeholder="Email" required />
-        </div>
-        <div class="mb-3">
-            <label>Senha</label>
-            <input type="password" name="Senha" class="form-control" placeholder="Senha" required />
-        </div>
-        <div>
-            <a href="/Usuario/ResetarSenha">Esqueceu sua senha?</a>
-        </div>
-        <button class="btn btn-primary" type="submit">Entrar</button>
-    </form>
+<div class="container vh-100 d-flex justify-content-center align-items-center">
+    <div class="card p-4 shadow" style="width: 100%; max-width: 400px;">
+        <h2 class="text-center mb-4">Login</h2>
 
-</body>
-</html>
+        <form id="loginForm">
+            <div class="mb-3">
+                <label>Email</label>
+                <input type="email" name="Email" class="form-control" required />
+            </div>
 
+            <div class="mb-3">
+                <label>Senha</label>
+                <input type="password" name="Senha" class="form-control" required />
+            </div>
+
+            <div class="mb-3 text-end">
+                <a href="/Usuario/ResetarSenha">Esqueceu sua senha?</a>
+            </div>
+
+            <button class="btn btn-primary w-100" type="submit">
+                Entrar
+            </button>
+        </form>
+    </div>
+</div>
 
 @section Scripts {
+    <script src="~/js/Site.js" asp-append-version="true"></script>
     <script src="~/js/UsuarioLogin.js" asp-append-version="true"></script>
 }

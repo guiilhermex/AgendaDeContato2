@@ -1,25 +1,35 @@
 ﻿@{
+    Layout = "_LayoutPublico";
     ViewData["Title"] = "Cadastro";
 }
 
-<h2>Cadastro</h2>
+<div class="container vh-100 d-flex justify-content-center align-items-center">
+    <div class="card p-4 shadow" style="width: 100%; max-width: 450px;">
+        <h2 class="text-center mb-4">Cadastro</h2>
 
-<form id="cadastroForm">
-    <div class="mb-3">
-        <label>Nome</label>
-        <input type="text" name="Nome" class="form-control" placeholder="Nome" required/>
+        <form id="cadastroForm">
+            <div class="mb-3">
+                <label>Nome</label>
+                <input type="text" name="Nome" class="form-control" required />
+            </div>
+
+            <div class="mb-3">
+                <label>Email</label>
+                <input type="email" name="Email" class="form-control" required />
+            </div>
+
+            <div class="mb-3">
+                <label>Senha</label>
+                <input type="password" name="Senha" class="form-control" required />
+            </div>
+
+            <button class="btn btn-success w-100" type="submit">
+                Cadastrar
+            </button>
+        </form>
     </div>
-    <div class="mb-3">
-        <label>Email</label>
-        <input type="email" name="Email" class="form-control" placeholder="Email" required/>
-    </div>
-    <div class="mb-3">
-        <label>Senha</label>
-        <input type="password" name="Senha" class="form-control" placeholder="Senha" required/>
-    </div>
-    <button class="btn btn-success" type="submit">Cadastrar</button>
-</form>
+</div>
+
 @section Scripts {
     <script src="~/js/UsuarioCadastro.js" asp-append-version="true"></script>
 }
-

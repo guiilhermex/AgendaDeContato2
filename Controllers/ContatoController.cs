@@ -6,14 +6,11 @@ using Blog.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Data.Common;
-using System.Security.Claims;
 
 namespace AgendaContato.Controllers
 {
     [Authorize]
-    [ApiController]
-    [Route("v1/[controller]")]
+    [Route("Contato")]
     public class ContatoController : ControllerBase
     {
         private int? ObterUsuarioLogadoId()
@@ -30,9 +27,10 @@ namespace AgendaContato.Controllers
 
         [HttpGet]
         public async Task<IActionResult> GetContatos(
-            [FromServices] AppDbContext context,
-            [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 10)
+    [FromServices] AppDbContext context,
+    [FromQuery] string? nome,
+    [FromQuery] int pageNumber = 1,
+    [FromQuery] int pageSize = 10)
         {
             try
             {
@@ -40,13 +38,20 @@ namespace AgendaContato.Controllers
                 if (userId is null)
                     return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
 
-                var total = await context.Contatos
-                    .Where(x => x.IdUsuario == userId)
-                    .CountAsync();
-
-                var contatos = await context.Contatos
+                var query = context.Contatos
                     .AsNoTracking()
-                    .Where(x => x.IdUsuario == userId)
+                    .Where(x => x.IdUsuario == userId);
+
+                // 🔎 FILTRO POR NOME
+                if (!string.IsNullOrWhiteSpace(nome))
+                {
+                    query = query.Where(x =>
+                        x.NomeContato.Contains(nome));
+                }
+
+                var total = await query.CountAsync();
+
+                var contatos = await query
                     .OrderBy(x => x.NomeContato)
                     .Skip((pageNumber - 1) * pageSize)
                     .Take(pageSize)

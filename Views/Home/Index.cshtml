@@ -1,26 +1,27 @@
 ﻿@{
-    ViewData["Title"] = "Bem-vindo - Agenda de Contatos";
+    Layout = "_LayoutPublico";
+    ViewData["Title"] = "Bem-vindo a agenda de contatos";
 }
 
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-md-8 offset-md-2 text-center">
-            <h1 class="display-5">Agenda de Contatos</h1>
-            <p class="lead">Um sistema simples para gerenciar contatos e grupos — rápido e prático.</p>
-
-            <p>
-                <a class="btn btn-primary btn-lg" href="@Url.Action("LoginView", "Usuario")">Entrar</a>
-                <a class="btn btn-outline-secondary btn-lg" href="@Url.Action("CadastroView", "Usuario")">Cadastrar</a>
+<div class="container vh-100 d-flex align-items-center">
+    <div class="row w-100 justify-content-center">
+        <div class="col-md-6 text-center">
+            <h1 class="mb-3">Agenda de Contatos</h1>
+            <p class="lead mb-4">
+                Organize seus contatos de forma simples, rápida e segura.
             </p>
 
-            <hr />
+            <a asp-controller="Usuario"
+               asp-action="Login"
+               class="btn btn-primary btn-lg me-2">
+                Login
+            </a>
 
-            <h4>Recursos</h4>
-            <ul class="text-start">
-                <li>Crie e edite contatos</li>
-                <li>Organize por grupos</li>
-                <li>Autenticação via JWT (API)</li>
-            </ul>
+            <a asp-controller="Usuario"
+               asp-action="Cadastro"
+               class="btn btn-outline-primary btn-lg">
+                Cadastro
+            </a>
         </div>
     </div>
 </div>

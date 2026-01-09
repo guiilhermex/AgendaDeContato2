@@ -7,7 +7,6 @@ using Blog.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using AgendaContato.ViewModels;
 
 namespace AgendaContato.Controllers
 {
@@ -27,6 +26,19 @@ namespace AgendaContato.Controllers
         {
             return View();
         }
+        [AllowAnonymous]
+        [HttpGet("EsqueceuSenha")]
+        public IActionResult EsqueceuSenhaView()
+        {
+            return View();
+        }
+        [AllowAnonymous]
+        [HttpGet("ResetarSenha")]
+        public IActionResult ResetarSenhaView()
+        {
+            return View();
+        }
+
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<IActionResult> ListarUsuarios([FromServices] AppDbContext context)
@@ -111,9 +123,9 @@ namespace AgendaContato.Controllers
         }
 
         [AllowAnonymous]
-        [HttpPost("EsqueciSenha")]
+        [HttpPost("EsqueceuSenha")]
         public async Task<IActionResult> EsqueciSenha(
-            [FromBody] UsuarioEsqueciSenhaViewModel model,
+            [FromBody] UsuarioEsqueceuSenhaViewModel model,
             [FromServices] AppDbContext context)
         {
             if (string.IsNullOrWhiteSpace(model.Email))
@@ -140,12 +152,12 @@ namespace AgendaContato.Controllers
         [AllowAnonymous]
         [HttpPost("ResetarSenha")]
         public async Task<IActionResult> ResetarSenha(
-            [FromBody] UsuarioResetSenhaViewModel model,
+            [FromBody] UsuarioResetarSenhaViewModel model,
             [FromServices] AppDbContext context)
         {
             if (string.IsNullOrWhiteSpace(model.Email) ||
                 string.IsNullOrWhiteSpace(model.Token) ||
-                string.IsNullOrWhiteSpace(model.NovaSenha))
+                string.IsNullOrWhiteSpace(model.ConfirmarSenha))
             {
                 return BadRequest(new ResultViewModel<string>("Dados inválidos"));
             }
@@ -158,7 +170,7 @@ namespace AgendaContato.Controllers
             if (usuario == null)
                 return BadRequest(new ResultViewModel<string>("Token inválido ou expirado"));
 
-            usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(model.NovaSenha);
+            usuario.SenhaHash = BCrypt.Net.BCrypt.HashPassword(model.ConfirmarSenha);
             usuario.ResetPasswordToken = null;
             usuario.ResetPasswordTokenExpiration = null;
 
