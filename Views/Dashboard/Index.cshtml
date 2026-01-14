@@ -4,6 +4,19 @@
 }
 
 <div class="container">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand fw-semibold">
+                Agenda de Contatos
+            </span>
+
+            <div class="ms-auto">
+                <button id="btnLogout" class="btn btn-outline-danger btn-sm">
+                    Sair
+                </button>
+            </div>
+        </div>
+    </nav>
 
     <!-- TÍTULO -->
     <div class="mb-4">
@@ -21,11 +34,12 @@
             Novo Grupo
         </button>
     </div>
+
     <!-- FILTRO CONTATOS -->
-    <div class="card-body border-bottom">
+    <div class="card-body border-bottom mb-3">
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
-                <label class="form-label">Buscar contato</label>
+                <label class="form-label fw-bold">Buscar contato</label>
                 <input type="text"
                        class="form-control"
                        id="FiltroContatoNome"
@@ -38,20 +52,22 @@
             </div>
         </div>
     </div>
+
     <!-- ================= CONTATOS ================= -->
     <div class="card mb-5">
-        <div class="card-header fw-semibold">
+        <div class="card-header fw-bold text-center">
             Contatos
         </div>
 
         <div class="table-responsive">
-            <table class="table table-striped mb-0" id="tabelaContato">
+            <table class="table table-striped mb-0 text-center align-middle" id="tabelaContato">
                 <thead>
                     <tr>
-                        <th>Nome</th>
-                        <th>Email</th>
-                        <th>Grupo</th>
-                        <th style="width: 150px;">Ações</th>
+                        <th class="fw-bold">Nome</th>
+                        <th class="fw-bold">Email</th>
+                        <th class="fw-bold">Telefone</th>
+                        <th class="fw-bold">Grupo</th>
+                        <th class="fw-bold" style="width: 150px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="dadosTabela">
@@ -61,10 +77,11 @@
         </div>
     </div>
 
-    <div class="card-body border-bottom">
+    <!-- FILTRO GRUPOS -->
+    <div class="card-body border-bottom mb-3">
         <div class="row g-2 align-items-end">
             <div class="col-md-3">
-                <label class="form-label">Buscar grupo</label>
+                <label class="form-label fw-bold">Buscar grupo</label>
                 <input type="text"
                        class="form-control"
                        id="FiltroGrupoNome"
@@ -77,18 +94,19 @@
             </div>
         </div>
     </div>
+
     <!-- ================= GRUPOS ================= -->
-    <div class="card">
-        <div class="card-header fw-semibold">
+    <div class="card mb-5">
+        <div class="card-header fw-bold text-center">
             Grupos
         </div>
 
         <div class="table-responsive">
-            <table class="table table-striped mb-0" id="tabelaGrupo">
+            <table class="table table-striped mb-0 text-center align-middle" id="tabelaGrupo">
                 <thead>
                     <tr>
-                        <th>Nome do Grupo</th>
-                        <th style="width: 150px;">Ações</th>
+                        <th class="fw-bold">Nome do Grupo</th>
+                        <th class="fw-bold" style="width: 150px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="dadosTabelaGrupo">
@@ -100,7 +118,6 @@
 
 </div>
 
-<!-- ================= MODAIS ================= -->
 <!-- MODAL CONTATO -->
 <div class="modal fade" id="modalContato" tabindex="-1">
     <div class="modal-dialog">
@@ -128,6 +145,10 @@
                     <div class="mb-3">
                         <label>Telefone</label>
                         <input type="text" class="form-control" id="ContatoTelefone" />
+                    </div>
+                    <div class="mb-3">
+                        <label>Grupo</label>
+                        <input type="text" class="form-control" id="ContatoGrupo" />
                     </div>
                 </form>
             </div>
@@ -171,7 +192,7 @@
     </div>
 </div>
 
-<!-- MODAL CONFIRMAÇÃO EXCLUSÃO -->
+<!-- MODAL CONFIRMAÇÃO -->
 <div class="modal fade" id="modalConfirmacao" tabindex="-1">
     <div class="modal-dialog modal-sm modal-dialog-centered">
         <div class="modal-content">

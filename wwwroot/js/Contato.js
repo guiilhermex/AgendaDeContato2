@@ -1,22 +1,85 @@
 ﻿const CONTATO_API = "/Contato";
 
 let contatoExcluirId = null;
+let modalContato = null;
+let modalConfirmacaoContato = null;
 
-/* =========================
-   LISTAR / FILTRAR CONTATOS
-========================= */
-async function carregarContatos(pageNumber = 1, pageSize = 10) {
-    const nome = document.getElementById("FiltroContatoNome")?.value ?? "";
+// cache em memória
+let contatosCache = [];
 
+/* ===============================
+   AUTH
+================================ */
+function getAuthHeaders() {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+        window.location.href = "/Usuario/Login";
+        return {};
+    }
+
+    return {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+    };
+}
+
+/* ===============================
+   TOAST
+================================ */
+function mostrarToast(mensagem, tipo = "success") {
+    const toastEl = document.getElementById("toastMensagem");
+    const toastBody = document.getElementById("toastBody");
+
+    if (!toastEl || !toastBody) return;
+
+    toastEl.className = `toast align-items-center text-bg-${tipo} border-0`;
+    toastBody.innerText = mensagem;
+
+    new bootstrap.Toast(toastEl).show();
+}
+
+/* ===============================
+   RENDER TABELA
+================================ */
+function renderizarTabela(contatos) {
+    const tbody = document.getElementById("dadosTabela");
+    tbody.innerHTML = "";
+
+    contatos.forEach(contato => {
+        const grupos = Array.isArray(contato.grupos) && contato.grupos.length
+            ? contato.grupos.join(", ")
+            : "-";
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${contato.nomeContato}</td>
+                <td>${contato.email}</td>
+                <td>${contato.telefone ?? "-"}</td>
+                <td>${grupos}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning me-1"
+                        onclick="editarContato(${contato.idContato})">
+                        Editar
+                    </button>
+                    <button class="btn btn-sm btn-danger"
+                        onclick="confirmarExcluirContato(${contato.idContato})">
+                        Excluir
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+/* ===============================
+   LISTAR CONTATOS
+================================ */
+async function carregarContatos() {
     try {
-        const response = await fetch(
-            `${CONTATO_API}?nome=${encodeURIComponent(nome)}&pageNumber=${pageNumber}&pageSize=${pageSize}`
-        );
-
-        if (response.status === 401) {
-            mostrarToast("Usuário não autorizado", "danger");
-            return;
-        }
+        const response = await fetch(CONTATO_API, {
+            headers: getAuthHeaders()
+        });
 
         if (!response.ok) {
             mostrarToast("Erro ao carregar contatos", "danger");
@@ -24,96 +87,92 @@ async function carregarContatos(pageNumber = 1, pageSize = 10) {
         }
 
         const result = await response.json();
-        const contatos = result.data.data;
+        contatosCache = result.data ?? [];
 
-        const tbody = document.getElementById("dadosTabela");
-        tbody.innerHTML = "";
-
-        contatos.forEach(contato => {
-            tbody.innerHTML += `
-                <tr>
-                    <td>${contato.nomeContato}</td>
-                    <td>${contato.email}</td>
-                    <td>-</td>
-                    <td>
-                        <button class="btn btn-sm btn-warning me-1"
-                            onclick="editarContato(${contato.idContato})">
-                            Editar
-                        </button>
-                        <button class="btn btn-sm btn-danger"
-                            onclick="confirmarExcluirContato(${contato.idContato})">
-                            Excluir
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
+        aplicarFiltro(); // sempre respeita o filtro atual
 
     } catch (error) {
         console.error(error);
-        mostrarToast("Erro inesperado ao carregar contatos", "danger");
+        mostrarToast("Erro inesperado", "danger");
     }
 }
 
-/* =========================
-   FILTRO
-========================= */
-document.getElementById("btnFiltrarContato")
-    ?.addEventListener("click", () => carregarContatos());
+/* ===============================
+   FILTRO POR NOME (AJUSTADO)
+================================ */
+function aplicarFiltro() {
+    const input = document.getElementById("FiltroContatoNome");
+    const filtro = input ? input.value.toLowerCase().trim() : "";
 
-/* =========================
-   BUSCAR POR ID
-========================= */
+    if (!filtro) {
+        renderizarTabela(contatosCache);
+        return;
+    }
+
+    const filtrados = contatosCache.filter(c =>
+        c.nomeContato.toLowerCase().includes(filtro)
+    );
+
+    renderizarTabela(filtrados);
+}
+
+/* ===============================
+   EDITAR CONTATO
+================================ */
 async function editarContato(id) {
     try {
-        const response = await fetch(`${CONTATO_API}/${id}`);
+        const response = await fetch(`${CONTATO_API}/${id}`, {
+            headers: getAuthHeaders()
+        });
 
         if (!response.ok) {
             mostrarToast("Contato não encontrado", "danger");
             return;
         }
 
-        const result = await response.json();
-        const contato = result.data;
+        const contato = (await response.json()).data;
 
         document.getElementById("ContatoId").value = contato.idContato;
         document.getElementById("ContatoNome").value = contato.nomeContato;
         document.getElementById("ContatoEmail").value = contato.email;
         document.getElementById("ContatoTelefone").value = contato.telefone ?? "";
 
-        document.getElementById("tituloModalContato").innerText = "Editar Contato";
+        document.getElementById("ContatoGrupo").value =
+            Array.isArray(contato.grupos)
+                ? contato.grupos.join(", ")
+                : "";
 
-        new bootstrap.Modal(
-            document.getElementById("modalContato")
-        ).show();
+        modalContato.show();
 
     } catch (error) {
         console.error(error);
-        mostrarToast("Erro ao buscar contato", "danger");
+        mostrarToast("Erro ao carregar contato", "danger");
     }
 }
 
-/* =========================
-   SALVAR (CRIAR / EDITAR)
-========================= */
-document.getElementById("btnSalvarContato")
-    ?.addEventListener("click", salvarContato);
-
+/* ===============================
+   SALVAR CONTATO
+================================ */
 async function salvarContato() {
     const id = document.getElementById("ContatoId").value;
-    const nomeContato = document.getElementById("ContatoNome").value.trim();
+
+    const nome = document.getElementById("ContatoNome").value.trim();
     const email = document.getElementById("ContatoEmail").value.trim();
     const telefone = document.getElementById("ContatoTelefone").value.trim();
+    const gruposTexto = document.getElementById("ContatoGrupo").value;
 
-    if (!nomeContato || !email) {
+    if (!nome || !email) {
         mostrarToast("Preencha os campos obrigatórios", "warning");
         return;
     }
 
     const payload = {
-        NomeContato: nomeContato,
+        NomeContato: nome,
         Email: email,
-        Telefone: telefone
+        Telefone: telefone,
+        Grupos: gruposTexto
+            ? gruposTexto.split(",").map(g => g.trim()).filter(Boolean)
+            : []
     };
 
     const url = id
@@ -122,71 +181,84 @@ async function salvarContato() {
 
     const method = id ? "PUT" : "POST";
 
-    try {
-        const response = await fetch(url, {
-            method,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+    const response = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload)
+    });
 
-        if (!response.ok) {
-            mostrarToast("Erro ao salvar contato", "danger");
-            return;
-        }
-
-        mostrarToast(
-            id ? "Contato atualizado com sucesso!" : "Contato criado com sucesso!",
-            "success"
-        );
-
-        bootstrap.Modal.getInstance(
-            document.getElementById("modalContato")
-        ).hide();
-
-        document.getElementById("formContato").reset();
-        document.getElementById("ContatoId").value = "";
-
-        carregarContatos();
-
-    } catch (error) {
-        console.error(error);
-        mostrarToast("Erro inesperado", "danger");
+    if (!response.ok) {
+        mostrarToast("Erro ao salvar contato", "danger");
+        return;
     }
+
+    modalContato.hide();
+    document.getElementById("formContato").reset();
+    document.getElementById("ContatoId").value = "";
+
+    mostrarToast("Contato salvo com sucesso!");
+    carregarContatos(); // 🔥 atualização automática
 }
 
-/* =========================
-   EXCLUSÃO
-========================= */
+/* ===============================
+   EXCLUIR CONTATO
+================================ */
 function confirmarExcluirContato(id) {
     contatoExcluirId = id;
-
-    new bootstrap.Modal(
-        document.getElementById("modalConfirmacao")
-    ).show();
+    modalConfirmacaoContato.show();
 }
-
-document.getElementById("btnConfirmarExclusao")
-    ?.addEventListener("click", excluirContato);
 
 async function excluirContato() {
     if (!contatoExcluirId) return;
 
-    try {
-        const response = await fetch(
-            `${CONTATO_API}/Deletar/${contatoExcluirId}`,
-            { method: "DELETE" }
-        );
-
-        if (!response.ok) {
-            mostrarToast("Erro ao excluir contato", "danger");
-            return;
+    const response = await fetch(
+        `${CONTATO_API}/Deletar/${contatoExcluirId}`,
+        {
+            method: "DELETE",
+            headers: getAuthHeaders()
         }
+    );
 
-        mostrarToast("Contato excluído com sucesso!", "success");
-        carregarContatos();
-
-    } catch (error) {
-        console.error(error);
-        mostrarToast("Erro inesperado", "danger");
+    if (!response.ok) {
+        mostrarToast("Erro ao excluir contato", "danger");
+        return;
     }
+
+    modalConfirmacaoContato.hide();
+    contatoExcluirId = null;
+
+    mostrarToast("Contato excluído com sucesso!");
+    carregarContatos(); // 🔥 atualização automática
 }
+
+/* ===============================
+   INIT
+================================ */
+document.addEventListener("DOMContentLoaded", () => {
+
+    modalContato = new bootstrap.Modal(
+        document.getElementById("modalContato")
+    );
+
+    modalConfirmacaoContato = new bootstrap.Modal(
+        document.getElementById("modalConfirmacao")
+    );
+
+    document
+        .getElementById("btnSalvarContato")
+        .addEventListener("click", salvarContato);
+
+    document
+        .getElementById("btnConfirmarExclusao")
+        .addEventListener("click", excluirContato);
+
+    document
+        .getElementById("btnFiltrarContato")
+        ?.addEventListener("click", aplicarFiltro);
+
+    document
+        .getElementById("FiltroContatoNome")
+        ?.addEventListener("input", aplicarFiltro);
+
+    carregarContatos();
+});

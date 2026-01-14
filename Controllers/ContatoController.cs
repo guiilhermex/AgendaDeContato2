@@ -16,193 +16,222 @@ namespace AgendaContato.Controllers
         private int? ObterUsuarioLogadoId()
         {
             var idClaim = User.FindFirst("IdUsuario")?.Value;
-            if (string.IsNullOrEmpty(idClaim))
-                return null;
-
-            if (int.TryParse(idClaim, out var idUsuario))
-                return idUsuario;
-
-            return null;
+            return int.TryParse(idClaim, out var idUsuario) ? idUsuario : null;
         }
 
+        /* ===============================
+           LISTAR CONTATOS
+        ================================ */
         [HttpGet]
         public async Task<IActionResult> GetContatos(
-    [FromServices] AppDbContext context,
-    [FromQuery] string? nome,
-    [FromQuery] int pageNumber = 1,
-    [FromQuery] int pageSize = 10)
-        {
-            try
-            {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
-
-                var query = context.Contatos
-                    .AsNoTracking()
-                    .Where(x => x.IdUsuario == userId);
-
-                // 🔎 FILTRO POR NOME
-                if (!string.IsNullOrWhiteSpace(nome))
-                {
-                    query = query.Where(x =>
-                        x.NomeContato.Contains(nome));
-                }
-
-                var total = await query.CountAsync();
-
-                var contatos = await query
-                    .OrderBy(x => x.NomeContato)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                var result = new
-                {
-                    TotalCount = total,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize,
-                    Data = contatos
-                };
-
-                return Ok(new ResultViewModel<object>(result));
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new ResultViewModel<Contato>("05X01 - falha interna no servidor"));
-            }
-        }
-
-        [HttpGet("{id:int}")]
-        public async Task<IActionResult> GetIdContato(
-            [FromRoute] int id,
             [FromServices] AppDbContext context)
         {
-            try
-            {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
 
-                var contato = await context.Contatos
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.IdContato == id && x.IdUsuario == userId);
+            var contatos = await context.Contatos
+                .AsNoTracking()
+                .Where(x => x.IdUsuario == userId)
+                .OrderBy(x => x.NomeContato)
+                .Select(x => new
+                {
+                    x.IdContato,
+                    x.NomeContato,
+                    x.Email,
+                    x.Telefone,
+                    Grupos = x.GrupoContatos
+                        .Select(gc => gc.Grupo.NomeGrupo)
+                        .ToList()
+                })
+                .ToListAsync();
 
-                if (contato == null)
-                    return NotFound(new ResultViewModel<Contato>("Conteúdo não encontrado"));
-
-                return Ok(new ResultViewModel<Contato>(contato));
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new ResultViewModel<Contato>("05X02 - falha interna no servidor"));
-            }
+            return Ok(new ResultViewModel<object>(contatos));
         }
 
+        /* ===============================
+           OBTER CONTATO POR ID
+        ================================ */
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetContatoPorId(
+            int id,
+            [FromServices] AppDbContext context)
+        {
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
+
+            var contato = await context.Contatos
+                .AsNoTracking()
+                .Where(x => x.IdContato == id && x.IdUsuario == userId)
+                .Select(x => new
+                {
+                    x.IdContato,
+                    x.NomeContato,
+                    x.Email,
+                    x.Telefone,
+                    Grupos = x.GrupoContatos
+                        .Select(gc => gc.Grupo.NomeGrupo)
+                        .ToList()
+                })
+                .FirstOrDefaultAsync();
+
+            if (contato == null)
+                return NotFound(new ResultViewModel<string>("Contato não encontrado"));
+
+            return Ok(new ResultViewModel<object>(contato));
+        }
+
+        /* ===============================
+           CRIAR CONTATO
+        ================================ */
         [HttpPost("Criar")]
         public async Task<IActionResult> CriarContato(
             [FromBody] EditorContatoViewModel model,
             [FromServices] AppDbContext context)
         {
             if (!ModelState.IsValid)
-                return BadRequest(new ResultViewModel<Contato>(ModelState.GetErrors()));
+                return BadRequest(new ResultViewModel<string>(ModelState.GetErrors()));
 
-            try
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
+
+            var contato = new Contato
             {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+                NomeContato = model.NomeContato.Trim(),
+                Telefone = model.Telefone,
+                Email = model.Email,
+                IdUsuario = userId.Value
+            };
 
-                var contato = new Contato
-                {
-                    NomeContato = model.NomeContato,
-                    Telefone = model.Telefone,
-                    Email = model.Email,
-                    IdUsuario = userId.Value
-                };
+            context.Contatos.Add(contato);
+            await context.SaveChangesAsync();
 
-                await context.Contatos.AddAsync(contato);
-                await context.SaveChangesAsync();
+            await VincularGruposAsync(
+                contato.IdContato,
+                model.Grupos,
+                userId.Value,
+                context
+            );
 
-                return Created($"/v1/Contato/{contato.IdContato}", new ResultViewModel<Contato>(contato));
-            }
-            catch (DbUpdateException)
-            {
-                return StatusCode(500, new ResultViewModel<Contato>("05X03 - Não foi possível incluir o contato"));
-            }
-            catch
-            {
-                return StatusCode(500, new ResultViewModel<Contato>("05X04 - Falha interna no servidor"));
-            }
+            return Ok(new ResultViewModel<string>("Contato criado com sucesso"));
         }
 
+        /* ===============================
+           EDITAR CONTATO
+        ================================ */
         [HttpPut("Editar/{id:int}")]
         public async Task<IActionResult> AlterarContato(
-            [FromRoute] int id,
+            int id,
             [FromBody] EditorContatoViewModel model,
             [FromServices] AppDbContext context)
         {
-            try
-            {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+            if (!ModelState.IsValid)
+                return BadRequest(new ResultViewModel<string>(ModelState.GetErrors()));
 
-                var contato = await context.Contatos
-                    .FirstOrDefaultAsync(x => x.IdContato == id && x.IdUsuario == userId);
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
 
-                if (contato == null)
-                    return NotFound(new ResultViewModel<Contato>("Conteúdo não encontrado"));
+            var contato = await context.Contatos
+                .Include(x => x.GrupoContatos)
+                .FirstOrDefaultAsync(x =>
+                    x.IdContato == id &&
+                    x.IdUsuario == userId);
 
-                contato.NomeContato = model.NomeContato;
-                contato.Telefone = model.Telefone;
-                contato.Email = model.Email;
+            if (contato == null)
+                return NotFound(new ResultViewModel<string>("Contato não encontrado"));
 
-                context.Contatos.Update(contato);
-                await context.SaveChangesAsync();
+            contato.NomeContato = model.NomeContato.Trim();
+            contato.Telefone = model.Telefone;
+            contato.Email = model.Email;
 
-                return Ok(new ResultViewModel<Contato>(contato));
-            }
-            catch (DbUpdateException)
-            {
-                return StatusCode(500, new ResultViewModel<Contato>("05X05 - não foi possível alterar o contato"));
-            }
-            catch
-            {
-                return StatusCode(500, new ResultViewModel<Contato>("05X06 - falha interna no servidor"));
-            }
+            // Remove somente os vínculos
+            context.GrupoContatos.RemoveRange(contato.GrupoContatos);
+            await context.SaveChangesAsync();
+
+            await VincularGruposAsync(
+                contato.IdContato,
+                model.Grupos,
+                userId.Value,
+                context
+            );
+
+            return Ok(new ResultViewModel<string>("Contato atualizado com sucesso"));
         }
 
+        /* ===============================
+           EXCLUIR CONTATO
+        ================================ */
         [HttpDelete("Deletar/{id:int}")]
         public async Task<IActionResult> DeletarContato(
-            [FromRoute] int id,
+            int id,
             [FromServices] AppDbContext context)
         {
-            try
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
+
+            var contato = await context.Contatos
+                .Include(x => x.GrupoContatos)
+                .FirstOrDefaultAsync(x =>
+                    x.IdContato == id &&
+                    x.IdUsuario == userId);
+
+            if (contato == null)
+                return NotFound(new ResultViewModel<string>("Contato não encontrado"));
+
+            context.GrupoContatos.RemoveRange(contato.GrupoContatos);
+            context.Contatos.Remove(contato);
+
+            await context.SaveChangesAsync();
+
+            return Ok(new ResultViewModel<string>("Contato excluído com sucesso"));
+        }
+
+        /* ===============================
+           MÉTODO PRIVADO — VINCULAR GRUPOS
+        ================================ */
+        private async Task VincularGruposAsync(
+            int idContato,
+            List<string>? grupos,
+            int userId,
+            AppDbContext context)
+        {
+            if (grupos == null || !grupos.Any())
+                return;
+
+            foreach (var nomeGrupo in grupos
+                .Select(g => g.Trim())
+                .Where(g => !string.IsNullOrWhiteSpace(g))
+                .Distinct())
             {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+                var grupo = await context.Grupos
+                    .FirstOrDefaultAsync(g =>
+                        g.UsuarioId == userId &&
+                        g.NomeGrupo == nomeGrupo);
 
-                var contato = await context.Contatos
-                    .FirstOrDefaultAsync(x => x.IdContato == id && x.IdUsuario == userId);
+                if (grupo == null)
+                {
+                    grupo = new Grupo
+                    {
+                        NomeGrupo = nomeGrupo,
+                        UsuarioId = userId
+                    };
 
-                if (contato == null)
-                    return NotFound(new ResultViewModel<Contato>("Conteúdo não encontrado"));
+                    context.Grupos.Add(grupo);
+                    await context.SaveChangesAsync();
+                }
 
-                context.Contatos.Remove(contato);
-                await context.SaveChangesAsync();
-
-                return Ok(new ResultViewModel<Contato>(contato));
+                context.GrupoContatos.Add(new GrupoContato
+                {
+                    IdContato = idContato,
+                    IdGrupo = grupo.IdGrupo
+                });
             }
-            catch (DbUpdateException)
-            {
-                return StatusCode(500, new ResultViewModel<Contato>("05X07 - não foi possível excluir contato"));
-            }
-            catch
-            {
-                return StatusCode(500, new ResultViewModel<Contato>("05X08 - falha interna no servidor"));
-            }
+
+            await context.SaveChangesAsync();
         }
     }
 }

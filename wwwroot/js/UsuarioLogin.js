@@ -9,6 +9,11 @@
         const email = form.Email.value.trim();
         const senha = form.Senha.value.trim();
 
+        if (!email || !senha) {
+            mostrarToast("Informe e-mail e senha", "warning");
+            return;
+        }
+
         try {
             const response = await fetch("/Usuario/Login", {
                 method: "POST",
@@ -30,17 +35,19 @@
 
             const data = await response.json();
 
-            if (data?.token) {
-                localStorage.setItem("token", data.token);
+            if (!data?.token) {
+                mostrarToast("Token não recebido do servidor", "danger");
+                return;
             }
 
-            const nome = data?.nome ?? "usuário";
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("usuarioNome", data.nome ?? "Usuário");
 
-            mostrarToast(`Bem-vindo, ${nome}!`, "success");
+            mostrarToast(`Bem-vindo, ${data.nome ?? "usuário"}!`, "success");
 
             setTimeout(() => {
                 window.location.href = "/Dashboard/Index";
-            }, 1000);
+            }, 800);
 
         } catch (error) {
             console.error("Erro na requisição:", error);

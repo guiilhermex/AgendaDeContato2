@@ -9,7 +9,7 @@
 
     toastEl.className = `toast align-items-center text-bg-${tipo} border-0`;
 
-    const texto = document.getElementById("toastTexto");
+    const texto = document.getElementById("toastBody");
     if (texto) texto.innerText = mensagem;
 
     const toast = new bootstrap.Toast(toastEl, {

@@ -19,12 +19,12 @@ namespace AgendaContato.Data.Mappings
             builder.HasOne(gc => gc.Grupo)
                 .WithMany(g => g.GrupoContatos)
                 .HasForeignKey(gc => gc.IdGrupo)
-                .OnDelete(DeleteBehavior.Restrict); // <- muda de Cascade para Restrict
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.HasOne(gc => gc.Contato)
                    .WithMany(c => c.GrupoContatos)
                    .HasForeignKey(gc => gc.IdContato)
-                   .OnDelete(DeleteBehavior.Restrict); // <- muda de Cascade para Restrict
+                   .OnDelete(DeleteBehavior.NoAction);
 
         }
     }

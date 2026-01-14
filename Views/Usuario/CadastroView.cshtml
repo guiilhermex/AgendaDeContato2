@@ -9,17 +9,17 @@
 
         <form id="cadastroForm">
             <div class="mb-3">
-                <label>Nome</label>
+                <label class="fw-bold">Nome</label>
                 <input type="text" name="Nome" class="form-control" required />
             </div>
 
             <div class="mb-3">
-                <label>Email</label>
+                <label class="fw-bold">Email</label>
                 <input type="email" name="Email" class="form-control" required />
             </div>
 
             <div class="mb-3">
-                <label>Senha</label>
+                <label class="fw-bold">Senha</label>
                 <input type="password" name="Senha" class="form-control" required />
             </div>
 
@@ -31,5 +31,6 @@
 </div>
 
 @section Scripts {
+    <script src="/js/Site.js"></script>
     <script src="~/js/UsuarioCadastro.js" asp-append-version="true"></script>
 }

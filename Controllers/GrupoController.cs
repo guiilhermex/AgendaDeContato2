@@ -16,15 +16,12 @@ namespace AgendaContato.Controllers
         private int? ObterUsuarioLogadoId()
         {
             var idClaim = User.FindFirst("IdUsuario")?.Value;
-            if (string.IsNullOrEmpty(idClaim))
-                return null;
-
-            if (int.TryParse(idClaim, out var idUsuario))
-                return idUsuario;
-
-            return null;
+            return int.TryParse(idClaim, out var idUsuario) ? idUsuario : null;
         }
 
+        /* ===============================
+           LISTAR GRUPOS
+        ================================ */
         [HttpGet]
         public async Task<IActionResult> ListarGrupos(
             [FromServices] AppDbContext context,
@@ -32,159 +29,182 @@ namespace AgendaContato.Controllers
             [FromQuery] int pageSize = 10,
             [FromQuery] string? nome = null)
         {
-            try
-            {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized(new ResultViewModel<string>("Usuário não identificado"));
 
-                var query = context.Grupos
-                    .AsNoTracking()
-                    .Where(x => x.UsuarioId == userId);
+            var query = context.Grupos
+                .AsNoTracking()
+                .Where(x => x.UsuarioId == userId);
 
-                if (!string.IsNullOrWhiteSpace(nome))
+            if (!string.IsNullOrWhiteSpace(nome))
+                query = query.Where(x => x.NomeGrupo.Contains(nome));
+
+            var total = await query.CountAsync();
+
+            var grupos = await query
+                .OrderBy(x => x.NomeGrupo)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(g => new
                 {
-                    query = query.Where(x => x.NomeGrupo.Contains(nome));
-                }
+                    g.IdGrupo,
+                    g.NomeGrupo
+                })
+                .ToListAsync();
 
-                var total = await query.CountAsync();
-
-                var grupos = await query
-                    .OrderBy(x => x.NomeGrupo)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                var result = new
-                {
-                    TotalCount = total,
-                    PageNumber = pageNumber,
-                    PageSize = pageSize,
-                    Data = grupos
-                };
-
-                return Ok(new ResultViewModel<object>(result));
-            }
-            catch
+            return Ok(new ResultViewModel<object>(new
             {
-                return StatusCode(500, new ResultViewModel<List<Grupo>>("05X01 - falha interna no servidor"));
-            }
+                TotalCount = total,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                Data = grupos
+            }));
         }
 
+        /* ===============================
+           OBTER GRUPO POR ID
+        ================================ */
         [HttpGet("Listar/{id:int}")]
         public async Task<IActionResult> ListarGrupoId(
             [FromRoute] int id,
             [FromServices] AppDbContext context)
         {
-            try
-            {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
 
-                var grupo = await context.Grupos
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(x => x.IdGrupo == id && x.UsuarioId == userId);
+            var grupo = await context.Grupos
+                .AsNoTracking()
+                .Where(x => x.IdGrupo == id && x.UsuarioId == userId)
+                .Select(g => new
+                {
+                    g.IdGrupo,
+                    g.NomeGrupo
+                })
+                .FirstOrDefaultAsync();
 
-                if (grupo == null)
-                    return NotFound(new ResultViewModel<Grupo>("Conteúdo não encontrado"));
+            if (grupo == null)
+                return NotFound(new ResultViewModel<string>("Grupo não encontrado"));
 
-                return Ok(new ResultViewModel<Grupo>(grupo));
-            }
-            catch
-            {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X02 - falha interna no servidor"));
-            }
+            return Ok(new ResultViewModel<object>(grupo));
         }
 
+        /* ===============================
+           CRIAR GRUPO
+        ================================ */
         [HttpPost("Criar")]
-        public async Task<IActionResult> CriarGrupos(
+        public async Task<IActionResult> CriarGrupo(
             [FromBody] EditorGrupoViewModel model,
             [FromServices] AppDbContext context)
         {
             if (!ModelState.IsValid)
-                return BadRequest(new ResultViewModel<Grupo>(ModelState.GetErrors()));
+                return BadRequest(new ResultViewModel<string>(ModelState.GetErrors()));
 
-            try
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
+
+            var nomeNormalizado = model.NomeGrupo.Trim();
+
+            var existe = await context.Grupos.AnyAsync(x =>
+                x.UsuarioId == userId &&
+                x.NomeGrupo == nomeNormalizado);
+
+            if (existe)
+                return BadRequest(new ResultViewModel<string>("Já existe um grupo com esse nome"));
+
+            var grupo = new Grupo
             {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+                NomeGrupo = nomeNormalizado,
+                UsuarioId = userId.Value
+            };
 
-                var grupo = new Grupo
-                {
-                    NomeGrupo = model.NomeGrupo,
-                    UsuarioId = userId.Value
-                };
+            context.Grupos.Add(grupo);
+            await context.SaveChangesAsync();
 
-                await context.Grupos.AddAsync(grupo);
-                await context.SaveChangesAsync();
-
-                return Created($"/Grupo/{grupo.IdGrupo}", new ResultViewModel<Grupo>(grupo));
-            }
-            catch
+            return Created("", new ResultViewModel<object>(new
             {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X03 - não foi possível criar o grupo"));
-            }
+                grupo.IdGrupo,
+                grupo.NomeGrupo
+            }));
         }
 
+        /* ===============================
+           EDITAR GRUPO
+        ================================ */
         [HttpPut("Editar/{id:int}")]
-        public async Task<IActionResult> EditarGrupos(
+        public async Task<IActionResult> EditarGrupo(
             [FromRoute] int id,
             [FromBody] EditorGrupoViewModel model,
             [FromServices] AppDbContext context)
         {
-            try
+            if (!ModelState.IsValid)
+                return BadRequest(new ResultViewModel<string>(ModelState.GetErrors()));
+
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
+
+            var grupo = await context.Grupos
+                .FirstOrDefaultAsync(x =>
+                    x.IdGrupo == id &&
+                    x.UsuarioId == userId);
+
+            if (grupo == null)
+                return NotFound(new ResultViewModel<string>("Grupo não encontrado"));
+
+            var novoNome = model.NomeGrupo.Trim();
+
+            var duplicado = await context.Grupos.AnyAsync(x =>
+                x.UsuarioId == userId &&
+                x.NomeGrupo == novoNome &&
+                x.IdGrupo != id);
+
+            if (duplicado)
+                return BadRequest(new ResultViewModel<string>("Já existe outro grupo com esse nome"));
+
+            grupo.NomeGrupo = novoNome;
+            await context.SaveChangesAsync();
+
+            return Ok(new ResultViewModel<object>(new
             {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
-
-                var grupo = await context.Grupos
-                    .FirstOrDefaultAsync(x => x.IdGrupo == id && x.UsuarioId == userId);
-
-                if (grupo == null)
-                    return NotFound(new ResultViewModel<Grupo>("Conteúdo não encontrado"));
-
-                grupo.NomeGrupo = model.NomeGrupo;
-
-                context.Grupos.Update(grupo);
-                await context.SaveChangesAsync();
-
-                return Ok(new ResultViewModel<Grupo>(grupo));
-            }
-            catch
-            {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X05 - não foi possível alterar o grupo"));
-            }
+                grupo.IdGrupo,
+                grupo.NomeGrupo
+            }));
         }
 
+        /* ===============================
+           EXCLUIR GRUPO (CORRETO)
+        ================================ */
         [HttpDelete("Deletar/{id:int}")]
-        public async Task<IActionResult> ExcluirGrupos(
+        public async Task<IActionResult> ExcluirGrupo(
             [FromRoute] int id,
             [FromServices] AppDbContext context)
         {
-            try
-            {
-                var userId = ObterUsuarioLogadoId();
-                if (userId is null)
-                    return Unauthorized(new ResultViewModel<string>("Token inválido ou usuário não identificado"));
+            var userId = ObterUsuarioLogadoId();
+            if (userId is null)
+                return Unauthorized();
 
-                var grupo = await context.Grupos
-                    .FirstOrDefaultAsync(x => x.IdGrupo == id && x.UsuarioId == userId);
+            var grupo = await context.Grupos
+                .FirstOrDefaultAsync(x =>
+                    x.IdGrupo == id &&
+                    x.UsuarioId == userId);
 
-                if (grupo == null)
-                    return NotFound(new ResultViewModel<Grupo>("Conteúdo não encontrado"));
+            if (grupo == null)
+                return NotFound(new ResultViewModel<string>("Grupo não encontrado"));
 
-                context.Grupos.Remove(grupo);
-                await context.SaveChangesAsync();
+            var vinculos = await context.GrupoContatos
+                .Where(x => x.IdGrupo == id)
+                .ToListAsync();
 
-                return Ok(new ResultViewModel<Grupo>(grupo));
-            }
-            catch
-            {
-                return StatusCode(500, new ResultViewModel<Grupo>("05X08 - falha interna no servidor"));
-            }
+            if (vinculos.Any())
+                context.GrupoContatos.RemoveRange(vinculos);
+
+            context.Grupos.Remove(grupo);
+            await context.SaveChangesAsync();
+
+            return Ok(new ResultViewModel<string>("Grupo excluído com sucesso"));
         }
     }
 }

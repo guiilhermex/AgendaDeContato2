@@ -6,7 +6,7 @@ namespace AgendaContato.Domain.Models
     {
         public Guid TokenId { get; set; }
         public int IdContato { get; set; }
-        public string NomeContato { get; set; }
+        public required string NomeContato { get; set; }
         public string Telefone { get; set; }
         public string Email { get; set; }
 

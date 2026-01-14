@@ -16,7 +16,6 @@ namespace AgendaContato.ViewModels.Contato
         [EmailAddress(ErrorMessage = "E-mail inválido")]
         [StringLength(80, MinimumLength = 5, ErrorMessage = "Este campo deve conter entre 5 a 80 caracteres")]
         public string Email { get; set; }
-        [Required(ErrorMessage = "O id é obrigatório")]
-        public int IdUsuario { get; set; } 
+        public List<string> Grupos { get; set; } = new();
     }
 }
