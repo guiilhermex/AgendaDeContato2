@@ -56,7 +56,7 @@ A aplicação contém as seguintes funcionalidades:
 ## 📸 Preview da Aplicação
 
 <p align="center">
-  <img src="docs/home.png" width="700"/>
+  <img src="Docs/home.png" width="700"/>
 </p>
 
 ## Como rodar o projeto
